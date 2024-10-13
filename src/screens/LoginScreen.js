@@ -6,10 +6,13 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
 } from "react-native";
 import auth from "@react-native-firebase/auth";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { AccessToken, LoginManager } from "react-native-fbsdk-next";
 import { GOOGLE_WEB_CLIENT_ID } from "@env";
+
 GoogleSignin.configure({
   webClientId: GOOGLE_WEB_CLIENT_ID,
 });
@@ -24,14 +27,44 @@ const LoginScreen = ({ navigation }) => {
       navigation.replace("Contacts");
     } catch (error) {
       console.error(error);
+      Alert.alert("Login Failed", error.message);
     }
   };
 
   const loginWithGoogle = async () => {
-    const { idToken } = await GoogleSignin.signIn();
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-    await auth().signInWithCredential(googleCredential);
-    navigation.replace("Contacts");
+    try {
+      const { idToken } = await GoogleSignin.signIn();
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+      await auth().signInWithCredential(googleCredential);
+      navigation.replace("Contacts");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Login Failed", error.message);
+    }
+  };
+
+  const loginWithFacebook = async () => {
+    try {
+      const result = await LoginManager.logInWithPermissions([
+        "public_profile",
+        "email",
+      ]);
+      if (result.isCancelled) {
+        throw new Error("User cancelled the login process");
+      }
+      const data = await AccessToken.getCurrentAccessToken();
+      if (!data) {
+        throw new Error("Something went wrong obtaining access token");
+      }
+      const facebookCredential = auth.FacebookAuthProvider.credential(
+        data.accessToken
+      );
+      await auth().signInWithCredential(facebookCredential);
+      navigation.replace("Contacts");
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Login Failed", error.message);
+    }
   };
 
   return (
@@ -61,7 +94,7 @@ const LoginScreen = ({ navigation }) => {
             style={styles.icon}
           />
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={loginWithFacebook}>
           <Image
             source={require("../../assets/facebook.png")}
             style={styles.icon}
